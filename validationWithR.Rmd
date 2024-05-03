@@ -1,0 +1,69 @@
+---
+title: "Untitled"
+output: html_document
+date: "2024-05-03"
+---
+
+```{r setup}
+library(tidyverse)
+library(lubridate) # for date manipulation
+
+# Read the CSV file
+covid_cases <- read_csv('~/prj/universidad/caso-covid/time_series_covid19_confirmed_global.csv')
+```
+
+```{r}
+covid_cases
+```
+
+
+```{r}
+# Melt the dataframe from wide to long format
+df <- covid_cases %>%
+  pivot_longer(
+    cols = !c('Province/State', 'Country/Region', 'Lat', 'Long'),
+    names_to = "date",
+    values_to = "cumulative_cases"
+  )
+df
+```
+```{r}
+# Convert the 'date' column to datetime
+df <- df %>%
+  mutate(date = mdy(date)) # assuming dates are in 'm/d/y' format
+df
+```
+
+
+```{r}
+# Sort by region and date
+df <- df %>%
+  arrange(`Country/Region`, `Province/State`, date)
+
+# Calculate new cases by taking the difference of cumulative cases
+df <- df %>%
+  group_by(`Country/Region`, `Province/State`) %>%
+  mutate(new_cases = cumulative_cases - lag(cumulative_cases, default = first(cumulative_cases))) %>%
+  ungroup()
+
+# Print the transformed data
+df
+```
+
+```{r}
+df$month_year <- format(df$date, "%Y-%m")
+
+monthly_cases <- df %>%
+  group_by(month_year) %>%
+  summarize(total_new_cases = sum(new_cases, na.rm = TRUE)) %>%
+  ungroup()
+
+monthly_cases
+```
+
+```{r}
+max_cases_month <- monthly_cases %>%
+  filter(total_new_cases == max(total_new_cases))
+max_cases_month
+```
+90 483 564
